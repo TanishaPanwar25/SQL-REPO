@@ -1,0 +1,229 @@
+create database EmployeesPerformance;
+
+-- Create the EmployeesPerformance table
+CREATE TABLE EmployeesPerformance (
+    EmpID INT,
+    EmpName VARCHAR(100),
+    Department VARCHAR(50),
+    Salary INT,
+    JoiningDate DATE,
+    PerformanceRating INT
+);
+
+-- Insert sample data
+INSERT INTO EmployeesPerformance VALUES
+(1, 'Alice', 'Sales', 60000, '2020-03-01', 5),
+(2, 'Bob', 'Sales', 55000, '2021-07-15', 4),
+(3, 'Charlie', 'HR', 50000, '2019-02-10', 3),
+(4, 'Diana', 'HR', 52000, '2020-08-23', 5),
+(5, 'Evan', 'IT', 70000, '2018-06-12', 2),
+(6, 'Fiona', 'IT', 72000, '2019-11-30', 4),
+(7, 'George', 'IT', 68000, '2021-04-18', 5),
+(8, 'Hannah', 'Marketing', 48000, '2020-01-20', 3),
+(9, 'Ian', 'Marketing', 50000, '2021-05-22', 4),
+(10, 'Jane', 'Sales', 58000, '2019-12-01', 3);
+select * from EmployeesPerformance
+
+--1. Rank employees based on Salary (highest salary = rank 1).
+select  EmpId,Salary ,rank() over(order by Salary desc) AS Rank from EmployeesPerformance;
+--2. Dense Rank employees based on PerformanceRating (highest rating first).
+select EmpID,EmpName,PErformanceRating,dense_rank() over(order by PerformanceRating desc) AS Dense_Rank from EmployeesPErformance;
+--3. Assign Row Numbers to employees ordered by JoiningDate.
+select EmpId,joiningDate,Row_Number()over(order by joiningDate) from EmployeesPerformance;
+----------4. Find the employee with the 2nd highest salary using RANK().
+with RankSecond AS(
+select EmpId,EmpName,Salary,Rank() over(order by Salary desc) AS Ranks from EmployeesPerformance)
+select * from RankSecond  where Ranks=2;
+--------5. Find the employee with the 2nd highest salary using DENSE_RANK().
+select * from EmployeesPErformance;
+with Dense_ranksecond As(
+select EmpID,EmpName,Salary,Dense_Rank() over( order by Salary desc) AS ranks from EmployeesPErformance
+)
+select * from Dense_ranksecond where ranks=2;
+------6. Find the 2nd most recent joiner using ROW_NUMBER().
+with Second_recent As(
+select EmpName,joiningdate,Row_Number() over( order by joiningDate desc) AS recent_joiner from EmployeesPerformance
+	)
+select * from Second_recent where recent_joiner=2;
+----7. Rank employees within each Department based on Salary.
+select  EmpId,EmpNAme,Department,salary,rank() over(partition by Department order by Salary desc) AS Rank from EmployeesPerformance;
+--8. Row Number employees within each Department ordered by JoiningDate.
+select  EmpId,EmpNAme,Department,salary,Row_Number() over(partition by Department order by joiningDate desc) AS Row_Number from EmployeesPerformance;
+
+--9. Dense Rank employees within each Department based on PerformanceRating.
+select  EmpId,EmpNAme,Department,salary,Dense_Rank() over(partition by Department order by PerformanceRating desc) AS Rank from EmployeesPerformance;
+
+--10. Find all employees who have the same salary rank.
+SELECT *
+FROM (
+    SELECT EmpId, EmpName, Salary,RANK() OVER (ORDER BY Salary DESC) AS SalaryRank FROM EmployeesPerformance
+) AS RankedData
+WHERE SalaryRank IN (
+    SELECT SalaryRank FROM (SELECT RANK() OVER (ORDER BY Salary DESC) AS SalaryRank FROM EmployeesPerformance) AS Temp
+    GROUP BY SalaryRank HAVING COUNT(*) > 1
+);	
+
+--11. Show each employee’s salary along with the next employee's salary (based on salary descending).
+SELECT EmpName, Salary,
+       LEAD(Salary) OVER (ORDER BY Salary DESC) AS NextLowerSalary
+FROM EmployeesPerformance;
+
+--12. Show each employee’s salary along with the previous employee’s salary.
+SELECT EmpName, Salary,
+       lag(Salary) OVER (ORDER BY Salary DESC) AS previousSalary
+FROM EmployeesPerformance;
+
+--13. Find the salary difference between an employee and the next employee.
+SELECT EmpName, Salary,
+       LEAD(Salary) OVER (ORDER BY Salary DESC) AS Next_Salary,
+       Salary - LEAD(Salary) OVER (ORDER BY Salary DESC) AS Diff_Salary
+FROM EmployeesPerformance;
+
+--14. Find the salary difference between an employee and the previous employee.
+SELECT EmpName, Salary,
+       lag(Salary) OVER (ORDER BY Salary DESC) AS prev_salary,
+        salary-lag(Salary) OVER (ORDER BY Salary DESC) AS Diff_salary
+FROM EmployeesPerformance;
+
+--15. For each department, show each employee and the next joining employee.
+select EmpName,JoiningDate,
+	LEAD(JoiningDate) over(order by joiningDate) AS Next_joining
+from EmployeesPErformance;
+--16. Find who joined immediately before and after each employee.	
+select EmpName,JoiningDate,
+	LEAD(EmpName) over(order by joiningDate) AS after_joining
+	,LAG(EmpName) over(order by joiningDate) AS before_joining
+from EmployeesPerformance;
+--17. Find employees whose salary increased compared to the previous employee (based on salary order).
+with Increased_salary As (
+SELECT EmpName, Salary,
+       LAG(Salary) OVER (ORDER BY Salary) AS Previous_Salary
+FROM EmployeesPerformance)
+select * from Increased_salary WHERE Salary > Previous_Salary;
+
+--18. Show employees with lower salaries than the next employee.
+SELECT *
+FROM (
+    SELECT EmpName, Salary,
+           LEAD(Salary) OVER (ORDER BY Salary) AS Next_Salary
+    FROM EmployeesPerformance
+) AS sub
+WHERE Salary < Next_Salary;
+
+
+--19. Compare each employee's performance rating with the next employee.
+select EmpName,performanceRating,
+LEAD(EmpName) OVER (ORDER BY PerformanceRating) AS Next_EmpName,
+lead(performanceRating) over(order by performanceRating) AS Next_Employee_Performance
+ from EmployeesPerformance;
+--20. Find the employee whose salary is immediately higher than Bob's salary.
+WITH RankedSalary AS (
+    SELECT EmpName, Salary,
+           LAG(Salary) OVER (ORDER BY Salary) AS Previous_Salary
+    FROM EmployeesPerformance
+)
+SELECT EmpName, Salary
+FROM RankedSalary
+WHERE Previous_Salary = (
+    SELECT Salary FROM EmployeesPerformance WHERE EmpName = 'Bob'
+);
+--21. Find cumulative salary total ordered by salary descending.
+SELECT EmpName, Salary,
+       SUM(Salary) OVER (ORDER BY Salary DESC) AS Cumulative_Salary
+FROM EmployeesPerformance;
+--22. Find cumulative count of employees based on joining date.
+SELECT EmpName, JoiningDate,
+       COUNT(*) OVER (ORDER BY JoiningDate) AS Cumulative_Employee_Count
+FROM EmployeesPerformance;
+
+--23. Calculate running average salary for all employees.
+SELECT EmpName, Salary,
+       AVG(Salary) OVER (ORDER BY Salary) AS Running_Avg_Salary
+FROM EmployeesPerformance;
+
+--24. Find the maximum salary within each department.
+SELECT EmpName, Department, Salary,
+       MAX(Salary) OVER (PARTITION BY Department) AS Max_Salary_In_Dept
+FROM EmployeesPerformance;
+--25. Find the minimum performance rating within each department.
+SELECT EmpName, Department, PerformanceRating,
+       MIN(PerformanceRating) OVER (PARTITION BY Department) AS Min_Rating_In_Dept
+FROM EmployeesPerformance;
+--26. Find average salary within each department.
+SELECT EmpName, Department, Salary,
+       AVG(Salary) OVER (PARTITION BY Department) AS Avg_Salary_In_Dept
+FROM EmployeesPerformance;
+--27. Find the difference between each employee's salary and department average salary.
+SELECT EmpName, Department, Salary,
+       Salary - AVG(Salary) OVER (PARTITION BY Department) AS Diff_From_Dept_Avg
+FROM EmployeesPerformance;
+--28. Find total salary per department using window function.
+SELECT EmpName, Department, Salary,
+       SUM(Salary) OVER (PARTITION BY Department) AS Total_Salary_In_Dept
+FROM EmployeesPerformance;
+
+--29. Find the employee with the minimum joining date in each department.
+--30. Find employees earning more than the average salary in their department.
+SELECT EmpName, Department, Salary
+FROM ( SELECT EmpName, Department, Salary,
+           AVG(Salary) OVER (PARTITION BY Department) AS Dept_Avg FROM EmployeesPerformance
+) AS sub
+WHERE Salary > Dept_Avg;
+--31. Find row number of employees partitioned by Department and ordered by Salary descending.
+SELECT EmpName, Department, Salary,
+       ROW_NUMBER() OVER (PARTITION BY Department ORDER BY Salary DESC) AS RowNum
+FROM EmployeesPerformance;
+--32. Find the highest paid employee in each department.
+SELECT EmpName, Department, Salary
+FROM (
+    SELECT EmpName, Department, Salary,RANK() OVER (PARTITION BY Department ORDER BY Salary DESC) AS SalaryRank
+    FROM EmployeesPerformance
+)AS sub  WHERE SalaryRank = 1;
+--33. Find the second highest paid employee in each department.
+SELECT EmpName, Department, Salary
+FROM (
+    SELECT EmpName, Department, Salary,RANK() OVER (PARTITION BY Department ORDER BY Salary DESC) AS SalaryRank
+    FROM EmployeesPerformance
+)AS subAS
+WHERE SalaryRank = 2;
+--34. List employees who are the newest in their department.
+SELECT EmpName, Department, JoiningDate
+FROM (SELECT EmpName, Department, JoiningDate,RANK() OVER (PARTITION BY Department ORDER BY JoiningDate DESC) AS JoinRank FROM EmployeesPerformance
+) AS Sub
+WHERE JoinRank = 1;
+--35. Find employees with the highest performance rating per department.
+SELECT EmpName, Department, PerformanceRating
+FROM (
+    SELECT EmpName, Department, PerformanceRating, RANK() OVER (PARTITION BY Department ORDER BY PerformanceRating DESC) AS RatingRank
+    FROM EmployeesPerformance
+)AS sub
+WHERE RatingRank = 1;
+--36. Find employees whose performance rating is lower than the department average.
+SELECT EmpName, Department, PerformanceRating
+FROM (
+    SELECT EmpName, Department, PerformanceRating,AVG(PerformanceRating) OVER (PARTITION BY Department) AS AvgRating
+    FROM EmployeesPerformance
+)AS sub
+WHERE PerformanceRating < AvgRating;
+--37. Find employees who have the same salary within their department.
+SELECT EmpName, Department, Salary
+FROM (
+    SELECT EmpName, Department, Salary, COUNT(*) OVER (PARTITION BY Department, Salary) AS SameSalaryCount
+    FROM EmployeesPerformance
+)AS sub
+WHERE SameSalaryCount > 1;
+--38. Find how many employees joined before each employee in the same department.
+SELECT EmpName, Department, JoiningDate,
+       COUNT(*) FILTER (WHERE JoiningDate < e.JoiningDate)
+       OVER (PARTITION BY Department) AS EmployeesJoinedBefore
+FROM EmployeesPerformance e;
+--39. Find difference in joining date between each employee and the next one in their department.
+SELECT EmpName, Department, JoiningDate,
+       LEAD(JoiningDate) OVER (PARTITION BY Department ORDER BY JoiningDate) AS NextJoinDate,
+       LEAD(JoiningDate) OVER (PARTITION BY Department ORDER BY JoiningDate) - JoiningDate AS DateDiff
+FROM EmployeesPerformance;
+--40. Rank employees across the company based on performance, break ties alphabetically by name.
+SELECT EmpName, PerformanceRating,
+       RANK() OVER (ORDER BY PerformanceRating DESC, EmpName ASC) AS PerformanceRank
+FROM EmployeesPerformance;
+
