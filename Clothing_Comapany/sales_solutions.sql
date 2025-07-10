@@ -1,4 +1,4 @@
-﻿
+﻿7
 ---------------------------------------------
 --CASE STUDY #7: QT CLOTHING CO.--
 ---------------------------------------------
@@ -15453,7 +15453,13 @@ select count(txn_id)as total from sales
 select round(100*cast(total_transactions as float)/cast(total as float),2) from c1,c2
 
 --**10. What is the most common combination of at least 1 quantity of any 3 products in a 1 single transaction?**
+with c1 as(
+select txn_id,prod_id, count(prod_id) over(partition by txn_id order by txn_id)T_Pro from  sales
+)
+select distinct prod_id,txn_id from c1 
+where T_Pro>=3
 
+select * from sales;
 ## 📝 Reporting Challenge
 
 Write a single SQL script that combines all of the previous questions into a scheduled report that the QT team can run at the beginning of each month to calculate the previous month’s values.
